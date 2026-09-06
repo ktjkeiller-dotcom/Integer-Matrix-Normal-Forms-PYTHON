@@ -5,25 +5,36 @@ import matrix
 # all the problem parameters (inputs) necessary to perform the computation.
 # It implements all computation as methods and implements completion
 # verification as well. see: https://en.wikipedia.org/wiki/Smith_normal_form
+
+# Smith normal form is a diagonal form where each element divides the next
+# the elements on the diagonal are called the "invariant factors" of the matrix
+# and are unique up to multiplication by units
 class SNFProblem:
 
     # A is a matrix over a PID that we want to find the smith normal form of.
     def __init__(self, A, debug=False):
-        # A is never changed. It remains a reference to the original input to
-        # the problem.
-        self.A = A.copy()
+        if isinstance(A, SNFProblem):
+            other = A
+            self.A = other.A
+            self.elementT = other.elementT
+            self.J = other.J
+            self.T = other.T
+        else:
+            # A is never changed. It remains a reference to the original input to
+            # the problem.
+            self.A = A.copy()
 
-        self.elementT = type(A.get(0, 0))
-        # J originally starts as a copy of A. As computation is performed,
-        # it is gradually reshaped into its Smith Normal Form
-        self.J = A.copy()
+            self.elementT = type(A.get(0, 0))
+            # J originally starts as a copy of A. As computation is performed,
+            # it is gradually reshaped into its Smith Normal Form
+            self.J = A.copy()
 
-        # S and T are the complimentary unimodular matrices that help
-        # diagonalize J. They start as identity matrices of the appropriate
-        # size and are gradually shaped into the respective unimodular
-        # complement matrices of the Smith Normal Form problem.
-        self.S = matrix.Matrix.id(A.h, type(A.get(0, 0)))
-        self.T = matrix.Matrix.id(A.w, type(A.get(0, 0)))
+            # S and T are the complimentary unimodular matrices that help
+            # diagonalize J. They start as identity matrices of the appropriate
+            # size and are gradually shaped into the respective unimodular
+            # complement matrices of the Smith Normal Form problem.
+            self.S = matrix.Matrix.id(A.h, type(A.get(0, 0)))
+            self.T = matrix.Matrix.id(A.w, type(A.get(0, 0)))
 
         self.debug = debug
 
@@ -309,3 +320,25 @@ class SNFProblem:
                          -self.J.get(i, i + 1) // self.J.get(i, i))
                 self.rLC(i, i + 1, i, self.elementT.getOne(),
                          -self.J.get(i + 1, i) // self.J.get(i, i))
+
+    def invariantFactorEquivalent(self, other):
+        zero = self.elementT.getZero()
+        one = self.elementT.getOne()
+        working = SNFProblem(self)
+        other_working = SNFProblem(other)
+
+        # if two matrices have the same unique smith normal form, their invariant factors
+        # (the elements on the diagonal) are the same up to units
+        # we therefore check that the quotient of each pair of diagonal elements is a unit
+
+        for i in range(working.J.h):
+            q = working.J.get(i,i).get_q(other_working.J.get(i,i))
+            if not (q.isUnit()):
+                return False
+            if not (working.J.get(i,i) == q*other_working.J.get(i,i)):
+                return False
+
+        # if it hasn't failed, return true
+        return True
+        
+            
