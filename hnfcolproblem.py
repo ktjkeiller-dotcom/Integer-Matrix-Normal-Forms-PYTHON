@@ -130,7 +130,7 @@ class HNFColProblem:
         if self.debug:
             print("cLC call")
 
-        if gcd is None or a.isUnit():
+        if gcd is None:
             c = self.elementT.getZero()
             d = self.elementT.getOne()
         else:
@@ -180,32 +180,29 @@ class HNFColProblem:
             if pivot != pivot_col:
                 self.cSwap(pivot_col, pivot)
 
-            done = False
-            while not done:
-                done = True
+            for col in range(pivot_col + 1, self.J.w):
                 pivot_value = self.J.get(row, pivot_col)
+                entry = self.J.get(row, col)
 
-                for col in range(pivot_col + 1, self.J.w):
-                    entry = self.J.get(row, col)
-                    if entry == zero:
-                        continue
-                    gcd, x, y = pivot_value.extended_gcd(entry)
-                    if not pivot_value.isEquivalent(gcd):
-                        self.cLC(row, pivot_col, col, x, y, gcd)
-                        done = False
-                        pivot_value = self.J.get(row, pivot_col)
+                if entry == zero:
+                    continue
 
-                pivot_value = self.J.get(row, pivot_col)
-                for col in range(pivot_col + 1, self.J.w):
-                    entry = self.J.get(row, col)
-                    if entry == zero:
-                        continue
+                gcd, x, y = pivot_value.extended_gcd(entry)
+                
+                # if entry already divisible by pivot_value
+                if entry % pivot_value == zero:
                     q = entry // pivot_value
                     self.cLC(row, col, pivot_col, one, -q)
-                    if self.J.get(row, col) != zero:
-                        done = False
+
+                # If the current pivot is not divisible by pivot
+                # replace the two rows by a Bezout transformation.
+                else:
+                    self.cLC(row,pivot_col,col,x,y,gcd)
 
             pivot_value = self.J.get(row, pivot_col)
+
+            # use pivot to reduce elements to right of pivot
+
             for col in range(pivot_col):
                 entry = self.J.get(row, col)
                 if entry == zero:

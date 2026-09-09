@@ -155,7 +155,7 @@ class HNFRowProblem:
         if self.debug:
             print("r_lc call")
 
-        if gcd is None or a.isUnit():
+        if gcd is None:
             c = self.elementT.getZero()
             d = self.elementT.getOne()
         else:
@@ -195,6 +195,7 @@ class HNFRowProblem:
         for col in range(self.J.w):
             if pivot_row >= self.J.h:
                 break
+
             # Find a nonzero entry in this column at or below pivot_row.
             pivot = None
 
@@ -210,48 +211,31 @@ class HNFRowProblem:
             if pivot != pivot_row:
                 self.rSwap(pivot_row, pivot)
 
-            # Make the pivot divide every entry below it.
-            # If it does not already divide an entry, use the extended
-            # gcd to replace the two rows by a unimodular combination
-            # whose pivot entry is their gcd.
-            done = False
-            while not done:
-                done = True
-                pivot_value = self.J.get(pivot_row, col)
-                for r in range(pivot_row + 1, self.J.h):
-                    entry = self.J.get(r, col)
-                    if entry == zero:
-                        continue
-                    gcd, x, y = pivot_value.extended_gcd(entry)
-                    # If the current pivot is not already associated to
-                    # the gcd, replace the two rows by a Bezout
-                    # transformation.
-                    if not pivot_value.isEquivalent(gcd):
-                        self.rLC(col,pivot_row,r,x,y,gcd)
-                        done = False
-                        pivot_value = self.J.get(pivot_row, col)
+            pivot_value = self.J.get(pivot_row, col)
+            for r in range(pivot_row + 1, self.J.h):
+                entry = self.J.get(r, col)
 
-                # Now clear entries below the pivot.
-                # At this point each entry below the pivot should be
-                # divisible by the pivot.
+                if entry == zero:
+                    continue
 
-                pivot_value = self.J.get(pivot_row, col)
-                for r in range(pivot_row + 1, self.J.h):
-                    entry = self.J.get(r, col)
-                    if entry == zero:
-                        continue
+                gcd, x, y = pivot_value.extended_gcd(entry)
+
+                # if entry already divisible by pivot_value, add multiple of pivot row to zero out
+                if entry % pivot_value == zero:
                     q = entry // pivot_value
                     self.rLC(col,r,pivot_row,one,-q)
-                    # If the quotient was not exact, the entry will
-                    # remain nonzero and another gcd step is required.
-                    if self.J.get(r, col) != zero:
-                        done = False
 
+                # If the current pivot is not a multiple of pivot, 
+                # use bezout coeffs and gcd to make pivot = gcd, and entry =0
+                else:
+                    self.rLC(col,pivot_row,r,x,y,gcd)
+
+                pivot_value = self.J.get(pivot_row, col)
+                
             # Reduce entries above the pivot.
             # Since the pivot is in column `col`, only rows above
             # `pivot_row` can have entries here.
 
-            pivot_value = self.J.get(pivot_row, col)
             for r in range(pivot_row):
                 entry = self.J.get(r, col)
                 if entry == zero:
@@ -259,7 +243,7 @@ class HNFRowProblem:
                 q = entry // pivot_value
                 self.rLC(col,r,pivot_row,one,-q)
 
-            # This column now has a valid pivot. Move to the next row.
+            # This row now has a valid pivot. Move to the next row.
 
             pivot_row += 1
 
